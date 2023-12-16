@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="css/p/test.css">
+</head>
+<body>
+    <div id="content">
+        <div id="space_zone">
+            <p>
+                <imp></imp>
+            </p>
+        </div>
+        <div id="board_zone">
+            <div id="snb_zone">
+                <ul>
+                    <li>
+                        <a>캠핑 게시시판</a>
+                    </li>
+                    <li>
+                        <a>캠핑 레시피</a>
+                    </li>
+                </ul>
+            </div>
+            <div id="point_zone">
+                <div id="category">
+                    <form>
+                        <input type="hidden" name="boardId" value="free">
+                        <input type="hidden" name="category" value>
+                        <a href="#none" onclick="setCategory('')" class="on">전체보기</a>
+                        <a href="#none" onclick="setCategory('백패킹')" class="on">백패킹</a>
+                        <a href="#none" onclick="setCategory('오토캠핑')" class="on">오토캠핑</a>
+                        <a href="#none" onclick="setCategory('장박')" class="on">장박</a>
+                        <a href="#none" onclick="setCategory('글램핑')" class="on">글램핑</a>
+                    </form>
+                </div>
+            </div>
+            <div id="board_zone_cont">
+                <div id="board_list_table">
+                    <table>
+                        <thead style="border: 1px solid black;">
+                            <tr style="border-top: 3px solid black;">
+                                <th>번호</th>
+                                <th>분류</th>
+                                <th>작성자</th>
+                                <th>제목</th>
+                                <th>조회</th>
+                                <th>추천</th>
+                                <th>날짜</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>백패킹</td>
+                                <td>유성</td>
+                                <td>백패킹 경험담~</td>
+                                <td>0</td>
+                                <td>0</td>
+                                <td>2023-12-24</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="pagenation">
+                    <ul>
+                        <!-- 반복문으로 페이지 출력 + 특정조건에 화면 맨앞 뒤로가기 기능이 있어야함 -->
+                        <li>
+                            <a herf="#">1</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

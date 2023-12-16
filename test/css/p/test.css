@@ -1,0 +1,23 @@
+#snb_zone > ul > li{
+    list-style: none;
+    display : inline-block;
+    margin: 0 0.5% 0 0;
+}
+
+table{
+    width: 100%;
+    padding: 1%;
+    text-align: center;
+    
+}
+
+thead{
+    display : table-header-group;
+    vertical-align: middle;
+    
+}
+
+tr{
+    border-top : 1px solid black;
+    
+}
