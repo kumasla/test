@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>메이플 보스 진행도</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="overall-progress">
+            <div class="overall-progress-title">전체 진행도</div>
+            <div class="overall-progress-bar">
+                <div class="progress-text">0%</div>
+                <div class="progress" style="width: 0%"></div>
+            </div>
+            <div class="overall-stats">
+                <span>총 캐릭터 수: <span id="totalCharacters">0</span></span>
+                <span>평균 레벨: <span id="averageLevel">0</span></span>
+            </div>
+        </div>
+        <div class="control-panel">
+            <input type="text" 
+                   id="searchInput" 
+                   class="search-input" 
+                   placeholder="직업명 검색..."
+                   oninput="filterCharacters(this.value)">
+            <div class="sort-controls">
+                <button class="sort-button active" onclick="changeSortMethod('progress')">진행도순</button>
+                <button class="sort-button" onclick="changeSortMethod('level')">레벨순</button>
+                <button class="sort-button" onclick="changeSortMethod('combat')">전투력순</button>
+            </div>
+        </div>
+        <div id="bossTracker"></div>
+    </div>
+    <script src="data/script.js"></script>
+</body>
+</html>
