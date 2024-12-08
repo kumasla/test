@@ -1,5 +1,6 @@
 let mapleData = null;
 let currentSortMethod = 'progress';
+let searchTerm = '';
 
 async function loadCharacterData() {
     try {
@@ -9,8 +10,8 @@ async function loadCharacterData() {
         }
         return await response.json();
     } catch (error) {
-        console.error('데이터 로딩 실패:', error);
-        return null;
+        console.warn('오프라인 모드로 실행됩니다.');
+        return defaultMapleData;
     }
 }
 
@@ -22,12 +23,20 @@ function calculateProgress(character) {
 
 function getLastLiberatedBoss(character) {
     const liberationOrder = mapleData.templates.liberationNames;
+    if (character.liberation[liberationOrder[liberationOrder.length - 1]]) {
+        return "완료";
+    }
     for (let i = liberationOrder.length - 1; i >= 0; i--) {
         if (character.liberation[liberationOrder[i]]) {
             return liberationOrder[i];
         }
     }
     return "없음";
+}
+
+function filterCharacters(query) {
+    searchTerm = query.toLowerCase();
+    updateDisplay();
 }
 
 function changeSortMethod(method) {
@@ -46,7 +55,7 @@ function compareCharacters(a, b) {
         case 'level':
             return parseInt(b.level) - parseInt(a.level);
         case 'combat':
-            return parseInt(b.combat.replace(/,/g, '')) - parseInt(a.combat.replace(/,/g, ''));
+            return parseInt(b.combat.replace(/[^\d]/g, '')) - parseInt(a.combat.replace(/[^\d]/g, ''));
         default:
             return 0;
     }
@@ -67,14 +76,24 @@ function canUnliberate(character, bossName) {
 }
 
 function toggleCharacter(element, event) {
-    if (event.target.closest('.boss-item') || 
-        event.target.closest('.liberation-status') || 
-        event.target.type === 'checkbox' || 
-        event.target.classList.contains('input-field')) {
+    if (event.target.type === 'checkbox' || 
+        event.target.classList.contains('input-field') ||
+        event.target.classList.contains('close-btn') ||
+        event.target.closest('.boss-item') ||
+        event.target.closest('.liberation-status') ||
+        event.target.closest('.level-display') ||
+        event.target.closest('.combat-display')) {
         return;
     }
+
     const content = element.nextElementSibling;
     content.classList.toggle('active');
+}
+
+function closeContent(button, event) {
+    event.stopPropagation();
+    const content = button.closest('.character-content');
+    content.classList.remove('active');
 }
 
 function updateBossStatus(characterName, bossName, event) {
@@ -109,20 +128,136 @@ function updateStat(characterName, field, value) {
     saveToLocalStorage();
 }
 
+function formatKoreanNumber(num) {
+    if (!num) return '0';
+    
+    const numStr = num.toString();
+    let result = '';
+    
+    if (numStr.length > 8) {
+        const eok = Math.floor(num / 100000000);
+        const remainder = num % 100000000;
+        result += `${eok}억 `;
+        if (remainder > 0) {
+            const man = Math.floor(remainder / 10000);
+            if (man > 0) {
+                result += `${man}만 `;
+            }
+            const rest = remainder % 10000;
+            if (rest > 0) {
+                result += rest;
+            }
+        }
+    }
+    else if (numStr.length > 4) {
+        const man = Math.floor(num / 10000);
+        const remainder = num % 10000;
+        result += `${man}만 `;
+        if (remainder > 0) {
+            result += remainder;
+        }
+    }
+    else {
+        result = numStr;
+    }
+    
+    return result.trim();
+}
+
 function formatNumber(num) {
-    return new Intl.NumberFormat('ko-KR').format(num);
+    if (num === '0' || !num) return '0';
+    return formatKoreanNumber(parseInt(num.toString().replace(/[^\d]/g, '')));
 }
 
 function saveToLocalStorage() {
     localStorage.setItem('mapleCharacters', JSON.stringify(mapleData.characters));
 }
-let searchTerm = '';
 
-function filterCharacters(query) {
-    searchTerm = query.toLowerCase();
-    updateDisplay();
+function enableLevelEdit(element, characterName) {
+    const currentValue = mapleData.characters[characterName].level;
+    const spanElement = element.querySelector('.level-text');
+    
+    if (element.querySelector('.level-input')) return;
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'level-input';
+    input.value = currentValue;
+    
+    input.onclick = (e) => e.stopPropagation();
+    
+    function completeEdit() {
+        const newValue = input.value.replace(/[^0-9]/g, '');
+        updateStat(characterName, 'level', newValue);
+        element.innerHTML = `<span class="level-text">Lv. ${newValue}</span>`;
+    }
+    
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            completeEdit();
+        } else if (e.key === 'Escape') {
+            element.innerHTML = `<span class="level-text">Lv. ${currentValue}</span>`;
+        }
+    };
+    
+    input.onblur = completeEdit;
+    
+    spanElement.replaceWith(input);
+    input.focus();
 }
 
+function enableCombatEdit(element, characterName) {
+    const currentValue = mapleData.characters[characterName].combat;
+    const spanElement = element.querySelector('.combat-text');
+    
+    if (element.querySelector('.combat-input')) return;
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'combat-input';
+    input.value = currentValue;
+    
+    input.onclick = (e) => e.stopPropagation();
+    
+    function completeEdit() {
+        const newValue = input.value.replace(/[^0-9]/g, '');
+        updateStat(characterName, 'combat', newValue);
+        element.innerHTML = `전투력: <span class="combat-text">${formatNumber(newValue)}</span>`;
+    }
+    
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            completeEdit();
+        } else if (e.key === 'Escape') {
+            element.innerHTML = `전투력: <span class="combat-text">${formatNumber(currentValue)}</span>`;
+        }
+    };
+    
+    input.onblur = completeEdit;
+    
+    spanElement.replaceWith(input);
+    input.focus();
+}
+
+function updateOverallProgress() {
+    const characters = Object.values(mapleData.characters);
+    
+    const totalProgress = characters.reduce((sum, char) => sum + calculateProgress(char), 0);
+    const averageProgress = totalProgress / characters.length;
+    
+    const totalLevel = characters.reduce((sum, char) => sum + parseInt(char.level), 0);
+    const averageLevel = Math.floor(totalLevel / characters.length);
+    
+    const progressBar = document.querySelector('.overall-progress-bar .progress');
+    const progressText = document.querySelector('.overall-progress-bar .progress-text');
+    const totalCharactersElement = document.getElementById('totalCharacters');
+    const averageLevelElement = document.getElementById('averageLevel');
+    
+    progressBar.style.width = `${averageProgress}%`;
+    progressText.textContent = `${averageProgress.toFixed(1)}%`;
+    totalCharactersElement.textContent = characters.length;
+    averageLevelElement.textContent = averageLevel;
+}
 
 function updateDisplay() {
     const container = document.getElementById('bossTracker');
@@ -133,20 +268,16 @@ function updateDisplay() {
             name,
             ...data
         }))
-        // 검색 필터 적용
         .filter(character => 
             searchTerm === '' || 
             character.name.toLowerCase().includes(searchTerm)
         )
-        // 정렬 적용
         .sort(compareCharacters);
 
     if (characters.length === 0) {
         container.innerHTML = '<div class="no-results">검색 결과가 없습니다.</div>';
         return;
     }
-
-    characters.sort(compareCharacters);
 
     characters.forEach(character => {
         const progress = calculateProgress(character);
@@ -158,8 +289,7 @@ function updateDisplay() {
             <div class="boss-item" onclick="updateBossStatus('${character.name}', '${bossName}', event)">
                 <input type="checkbox" 
                     ${cleared ? 'checked' : ''}
-                    onclick="event.stopPropagation()" 
-                    onchange="updateBossStatus('${character.name}', '${bossName}', event)">
+                    onclick="event.stopPropagation()">
                 <span>${bossName}</span>
             </div>
         `).join('');
@@ -168,26 +298,25 @@ function updateDisplay() {
             const isDisabled = !canLiberate(character, bossName) && !character.liberation[bossName];
             return `
                 <div class="liberation-status ${isDisabled ? 'disabled' : ''}" 
-                     onclick="updateLiberation('${character.name}', '${bossName}', event)">
+                     onclick="${isDisabled ? '' : `updateLiberation('${character.name}', '${bossName}', event)`}">
                     <input type="checkbox" 
                         ${character.liberation[bossName] ? 'checked' : ''}
                         ${isDisabled ? 'disabled' : ''}
-                        onclick="event.stopPropagation()" 
+                        onclick="event.stopPropagation()"
                         onchange="updateLiberation('${character.name}', '${bossName}', event)">
-                    <span>${bossName} 해방</span>
+                    <span onclick="${isDisabled ? '' : `updateLiberation('${character.name}', '${bossName}', event)`}">
+                        ${bossName} 해방
+                    </span>
                 </div>
             `;
         }).join('');
-
         characterElement.innerHTML = `
             <div class="character-header" onclick="toggleCharacter(this, event)">
-                <span>${character.name}</span>
-                <div class="stats-display">
-                    Lv.<input type="text" 
-                        class="input-field" 
-                        value="${character.level}"
-                        onclick="event.stopPropagation()" 
-                        onchange="updateStat('${character.name}', 'level', this.value)">
+                <div class="character-name-level">
+                    <span class="character-name">${character.name}</span>
+                    <div class="stats-display level-display" onclick="enableLevelEdit(this, '${character.name}')">
+                        <span class="level-text">Lv. ${character.level}</span>
+                    </div>
                 </div>
                 <div class="stats-display combat-display" onclick="enableCombatEdit(this, '${character.name}')">
                     전투력: <span class="combat-text">${formatNumber(character.combat)}</span>
@@ -201,7 +330,11 @@ function updateDisplay() {
                 </div>
             </div>
             <div class="character-content">
+                <div class="content-header">
+                    <button class="close-btn" onclick="closeContent(this, event)">△</button>
+                </div>
                 <div class="boss-list">
+                    <div class="boss-title">솔플 진행 현황</div>
                     ${bossesHtml}
                 </div>
                 <div class="liberation-section">
@@ -217,10 +350,11 @@ function updateDisplay() {
 }
 
 async function initialize() {
-    mapleData = await loadCharacterData();
-    if (!mapleData) {
-        console.error('기본 데이터를 로드할 수 없습니다.');
-        return;
+    try {
+        mapleData = await loadCharacterData();
+    } catch (error) {
+        console.warn('기본 데이터를 사용합니다.');
+        mapleData = defaultMapleData;
     }
 
     const savedCharacters = localStorage.getItem('mapleCharacters');
@@ -249,110 +383,4 @@ async function initialize() {
     updateDisplay();
 }
 
-//진행도
-function updateOverallProgress() {
-    const characters = Object.values(mapleData.characters);
-    
-    // 전체 진행도 계산
-    const totalProgress = characters.reduce((sum, char) => sum + calculateProgress(char), 0);
-    const averageProgress = totalProgress / characters.length;
-    
-    // 평균 레벨 계산
-    const totalLevel = characters.reduce((sum, char) => sum + parseInt(char.level), 0);
-    const averageLevel = Math.floor(totalLevel / characters.length);
-    
-    // UI 업데이트
-    const progressBar = document.querySelector('.overall-progress-bar .progress');
-    const progressText = document.querySelector('.overall-progress-bar .progress-text');
-    const totalCharactersElement = document.getElementById('totalCharacters');
-    const averageLevelElement = document.getElementById('averageLevel');
-    
-    progressBar.style.width = `${averageProgress}%`;
-    progressText.textContent = `${averageProgress.toFixed(1)}%`;
-    totalCharactersElement.textContent = characters.length;
-    averageLevelElement.textContent = averageLevel;
-}
-//전투력 표시 디자인
-function formatKoreanNumber(num) {
-    if (!num) return '0';
-    
-    const numStr = num.toString();
-    let result = '';
-    
-    // 1억 이상
-    if (numStr.length > 8) {
-        const eok = Math.floor(num / 100000000);
-        const remainder = num % 100000000;
-        result += `${eok}억 `;
-        if (remainder > 0) {
-            const man = Math.floor(remainder / 10000);
-            if (man > 0) {
-                result += `${man}만 `;
-            }
-            const rest = remainder % 10000;
-            if (rest > 0) {
-                result += rest;
-            }
-        }
-    }
-    // 1만 이상 1억 미만
-    else if (numStr.length > 4) {
-        const man = Math.floor(num / 10000);
-        const remainder = num % 10000;
-        result += `${man}만 `;
-        if (remainder > 0) {
-            result += remainder;
-        }
-    }
-    // 1만 미만
-    else {
-        result = numStr;
-    }
-    
-    return result.trim();
-}
-
-// formatNumber 함수를 수정
-function formatNumber(num) {
-    if (num === '0' || !num) return '0';
-    return formatKoreanNumber(parseInt(num.toString().replace(/[^\d]/g, '')));
-}
-
-
-function enableCombatEdit(element, characterName) {
-    const currentValue = mapleData.characters[characterName].combat;
-    const spanElement = element.querySelector('.combat-text');
-    
-    // 이미 input이 있다면 무시
-    if (element.querySelector('.combat-input')) return;
-    
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'combat-input';
-    input.value = currentValue;
-    
-    // 클릭 이벤트 전파 방지
-    input.onclick = (e) => e.stopPropagation();
-    
-    // 입력 완료 (엔터 키 또는 포커스 잃을 때)
-    function completeEdit() {
-        const newValue = input.value.replace(/[^0-9]/g, '');
-        updateStat(characterName, 'combat', newValue);
-        element.innerHTML = `전투력: <span class="combat-text">${formatNumber(newValue)}</span>`;
-    }
-    
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter') {
-            completeEdit();
-        } else if (e.key === 'Escape') {
-            element.innerHTML = `전투력: <span class="combat-text">${formatNumber(currentValue)}</span>`;
-        }
-    };
-    
-    input.onblur = completeEdit;
-    
-    // 현재 텍스트를 input으로 교체
-    spanElement.replaceWith(input);
-    input.focus();
-}
 document.addEventListener('DOMContentLoaded', initialize);
